@@ -1,4 +1,4 @@
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Loader2, Wallet } from "lucide-react";
 
 interface FreighterSigningModalProps {
@@ -10,23 +10,19 @@ export function FreighterSigningModal({ open, onOpenChange }: FreighterSigningMo
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md border-primary/20 bg-gradient-to-br from-card to-card/80">
-        <div className="flex flex-col items-center justify-center py-8 px-4 space-y-6">
+        <DialogTitle className="text-xl font-semibold text-center">
+          Waiting for Freighter approval
+        </DialogTitle>
+        <DialogDescription className="text-sm text-muted-foreground text-center">
+          Please check your Freighter wallet extension and approve the transaction
+        </DialogDescription>
+        <div className="flex flex-col items-center justify-center py-4 px-4 space-y-6">
           {/* Animated wallet icon */}
           <div className="relative">
             <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl animate-pulse" />
             <div className="relative bg-primary/10 p-6 rounded-full border-2 border-primary/30">
               <Wallet className="h-12 w-12 text-primary" />
             </div>
-          </div>
-
-          {/* Status text */}
-          <div className="text-center space-y-2">
-            <h3 className="text-xl font-semibold text-foreground">
-              Waiting for Freighter approval
-            </h3>
-            <p className="text-sm text-muted-foreground max-w-xs">
-              Please check your Freighter wallet extension and approve the transaction
-            </p>
           </div>
 
           {/* Loading indicator */}
