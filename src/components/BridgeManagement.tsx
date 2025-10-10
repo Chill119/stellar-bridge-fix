@@ -69,9 +69,9 @@ export function BridgeManagement() {
         description: "Transaction has been signed and submitted to the network",
       });
     } catch (error) {
+      // Error is already handled by the hook with toast notifications
       setShowSigningModal(false);
       setPendingTransfer(prev => ({ ...prev, status: "failed" }));
-      console.error("Failed to complete transfer:", error);
     }
   };
 
