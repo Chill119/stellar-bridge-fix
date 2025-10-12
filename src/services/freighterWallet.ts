@@ -127,6 +127,11 @@ export async function signStellarTransaction(
       throw new FreighterWalletError("Invalid XDR string", "INVALID_XDR");
     }
 
+    // Ensure window is focused to prevent popup blocking
+    if (typeof window !== 'undefined') {
+      window.focus();
+    }
+
     // Get network info if not provided
     let signOptions: { network?: string; networkPassphrase?: string } = {};
     
@@ -140,13 +145,16 @@ export async function signStellarTransaction(
       signOptions.networkPassphrase = currentNetwork.networkPassphrase;
     }
 
-    // Sign the transaction
+    // Sign the transaction - this will trigger the wallet popup
     const result = await signTransaction(xdr, signOptions);
     
     if (result.error) {
       // Handle specific error cases
       if (result.error.includes("User declined")) {
         throw new FreighterWalletError("User declined to sign the transaction", "USER_DECLINED");
+      }
+      if (result.error.toLowerCase().includes("locked")) {
+        throw new FreighterWalletError("Wallet is locked. Please unlock it.", "WALLET_LOCKED");
       }
       if (result.error.includes("network")) {
         throw new FreighterWalletError(

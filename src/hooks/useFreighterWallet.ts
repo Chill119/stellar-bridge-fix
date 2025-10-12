@@ -107,9 +107,14 @@ export function useFreighterWallet() {
    */
   const signTransaction = useCallback(
     async (xdr: string, network?: string, networkPassphrase?: string) => {
+      setIsSigning(true);
+      
+      // Focus window to ensure popup isn't blocked
+      if (typeof window !== 'undefined') {
+        window.focus();
+      }
+      
       try {
-        setIsSigning(true);
-        
         const result = await signStellarTransaction(xdr, network, networkPassphrase);
         
         toast.success("Transaction signed successfully", {
@@ -122,6 +127,10 @@ export function useFreighterWallet() {
           if (error.code === "USER_DECLINED") {
             toast.error("Transaction declined", {
               description: "You declined to sign the transaction",
+            });
+          } else if (error.code === "WALLET_LOCKED") {
+            toast.error("Wallet is locked", {
+              description: "Please unlock your Freighter wallet and try again",
             });
           } else if (error.code === "NETWORK_MISMATCH") {
             toast.error("Network mismatch", {

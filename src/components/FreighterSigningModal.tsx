@@ -9,12 +9,16 @@ interface FreighterSigningModalProps {
 export function FreighterSigningModal({ open, onOpenChange }: FreighterSigningModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md border-primary/20 bg-gradient-to-br from-card to-card/80">
+      <DialogContent 
+        className="sm:max-w-md border-primary/20 bg-gradient-to-br from-card to-card/80"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogTitle className="text-xl font-semibold text-center">
-          Waiting for Freighter approval
+          Waiting for wallet approval
         </DialogTitle>
         <DialogDescription className="text-sm text-muted-foreground text-center">
-          Please check your Freighter wallet extension and approve the transaction
+          A popup window should appear from your wallet extension
         </DialogDescription>
         <div className="flex flex-col items-center justify-center py-4 px-4 space-y-6">
           {/* Animated wallet icon */}
@@ -33,7 +37,12 @@ export function FreighterSigningModal({ open, onOpenChange }: FreighterSigningMo
 
           {/* Info note */}
           <div className="bg-muted/50 border border-border rounded-lg p-3 text-xs text-muted-foreground text-center max-w-xs">
-            If the Freighter popup doesn't appear, click the extension icon in your browser toolbar
+            <p className="font-medium mb-1">Can't see the wallet popup?</p>
+            <ul className="text-left space-y-1">
+              <li>• Click the wallet extension icon in your browser toolbar</li>
+              <li>• Check if popups are blocked (look for a blocked popup icon in your address bar)</li>
+              <li>• Make sure your wallet is unlocked</li>
+            </ul>
           </div>
         </div>
       </DialogContent>
