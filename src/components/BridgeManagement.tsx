@@ -1,229 +1,201 @@
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, CheckCircle2, AlertCircle, ArrowRight, Wallet } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Globe, Star, ArrowUpDown } from "lucide-react";
 import { useFreighterWallet } from "@/hooks/useFreighterWallet";
 import { FreighterSigningModal } from "./FreighterSigningModal";
-import { toast } from "sonner";
-
-interface PendingTransfer {
-  id: string;
-  amount: string;
-  token: string;
-  destinationAddress: string;
-  unsignedXdr: string;
-  timestamp: Date;
-  status: "pending" | "signing" | "completed" | "failed";
-}
-
-// Mock data for demonstration
-const mockPendingTransfer: PendingTransfer = {
-  id: "tx_123456",
-  amount: "100",
-  token: "USDC",
-  destinationAddress: "GCLWGQPMKXQSPF776IU33AH4PZNOOWNAWGGKVTBQMIC5IMKUNP3E6NVU",
-  unsignedXdr: "AAAAAgAAAABelb3/qEcIxAk663L/K2xkREbBBFcpnRHzyzX18OyJ+QAAAGQAAAAAAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAABAAAAAF6Vvf+oRwjECTrrcv8rbGRERsEEVymdEfPLNfXw7In5AAAAAAAAAAC7JAuE0VHLvTQGAAABJVHx6lAAAAAAAAAAAA==",
-  timestamp: new Date(),
-  status: "pending",
-};
 
 export function BridgeManagement() {
-  const { walletState, isSigning, connect, signTransaction } = useFreighterWallet();
+  const { walletState, connect } = useFreighterWallet();
   const [showSigningModal, setShowSigningModal] = useState(false);
-  const [pendingTransfer, setPendingTransfer] = useState<PendingTransfer>(mockPendingTransfer);
+  const [count, setCount] = useState(1);
+  const [fromNetwork, setFromNetwork] = useState("ethereum");
+  const [toNetwork, setToNetwork] = useState("stellar");
+  const [token, setToken] = useState("eth");
 
-  const handleCompleteTransfer = async () => {
-    if (!walletState.isConnected || !walletState.isAllowed) {
-      try {
-        await connect();
-      } catch (error) {
-        return;
-      }
-    }
-
-    try {
-      // Show signing modal
-      setShowSigningModal(true);
-      setPendingTransfer(prev => ({ ...prev, status: "signing" }));
-
-      // Sign the transaction
-      const result = await signTransaction(
-        pendingTransfer.unsignedXdr,
-        undefined, // Use current network
-        walletState.networkPassphrase || undefined
-      );
-
-      // Hide modal
-      setShowSigningModal(false);
-
-      // Update status
-      setPendingTransfer(prev => ({ ...prev, status: "completed" }));
-
-      // Here you would typically submit the signed XDR to your backend
-      console.log("Signed XDR:", result.signedXdr);
-      console.log("Signer Address:", result.signerAddress);
-
-      toast.success("Destination transfer completed!", {
-        description: "Transaction has been signed and submitted to the network",
-      });
-    } catch (error) {
-      // Error is already handled by the hook with toast notifications
-      setShowSigningModal(false);
-      setPendingTransfer(prev => ({ ...prev, status: "failed" }));
+  const handleCheckConnection = async () => {
+    if (!walletState.isConnected) {
+      await connect();
     }
   };
 
-  const handleRetry = () => {
-    setPendingTransfer(prev => ({ ...prev, status: "pending" }));
-    handleCompleteTransfer();
+  const handleManualCheck = () => {
+    setCount(prev => prev + 1);
+  };
+
+  const handleSwapNetworks = () => {
+    const temp = fromNetwork;
+    setFromNetwork(toNetwork);
+    setToNetwork(temp);
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Bridge Management
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Complete pending cross-chain transfers to Stellar
-          </p>
+    <div className="min-h-screen bg-background">
+      {/* Header Section */}
+      <div className="container mx-auto px-4 py-12 text-center">
+        <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+          London Blockchain Bridge
+        </h1>
+        <p className="text-muted-foreground text-lg max-w-3xl mx-auto mb-8">
+          Seamlessly transfer assets across multiple blockchain networks with our secure and efficient bridge protocol.
+        </p>
+
+        {/* Action Buttons */}
+        <div className="flex gap-4 justify-center mb-8">
+          <Button onClick={handleCheckConnection} size="lg">
+            Check Freighter Connection
+          </Button>
+          <Button onClick={handleManualCheck} variant="secondary" size="lg">
+            Manual Freighter Check
+          </Button>
         </div>
 
-        {/* Wallet Status */}
-        <Card className="border-primary/20 bg-gradient-to-br from-card to-card/80">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Wallet className="h-5 w-5 text-primary" />
-              Freighter Wallet Status
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Connection:</span>
-              <Badge variant={walletState.isConnected ? "default" : "secondary"}>
-                {walletState.isConnected ? "Connected" : "Not Connected"}
-              </Badge>
-            </div>
-            {walletState.address && (
-              <>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Address:</span>
-                  <code className="text-xs bg-muted px-2 py-1 rounded">
-                    {walletState.address.slice(0, 8)}...{walletState.address.slice(-8)}
-                  </code>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Network:</span>
-                  <Badge variant="outline">{walletState.network}</Badge>
-                </div>
-              </>
-            )}
-            {!walletState.isConnected && (
-              <Button onClick={connect} className="w-full">
-                <Wallet className="h-4 w-4 mr-2" />
-                Connect Freighter Wallet
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+        {/* Test Component */}
+        <div className="max-w-md mx-auto bg-card/50 border border-border rounded-lg p-6">
+          <h3 className="text-lg font-semibold mb-2">React Test Component</h3>
+          <p className="text-muted-foreground">Count: {count}</p>
+        </div>
+      </div>
 
-        {/* Pending Transfer */}
-        <Card className="border-primary/20 bg-gradient-to-br from-card to-card/80">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Pending Destination Transfer</span>
-              <Badge
-                variant={
-                  pendingTransfer.status === "completed"
-                    ? "default"
-                    : pendingTransfer.status === "failed"
-                    ? "destructive"
-                    : "secondary"
-                }
+      {/* Main Content - Two Column Layout */}
+      <div className="container mx-auto px-4 pb-12">
+        <div className="grid lg:grid-cols-2 gap-6 max-w-6xl mx-auto">
+          {/* Left Column - Network Selection */}
+          <div className="bg-card/50 border border-border rounded-xl p-6 space-y-6">
+            {/* From Network */}
+            <div>
+              <label className="text-sm text-muted-foreground mb-2 block">From Network</label>
+              <Select value={fromNetwork} onValueChange={setFromNetwork}>
+                <SelectTrigger className="w-full bg-background/80 border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border">
+                  <SelectItem value="ethereum">
+                    <div className="flex items-center gap-2">
+                      <Globe className="h-4 w-4 text-primary" />
+                      <span>Ethereum</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="polygon">
+                    <div className="flex items-center gap-2">
+                      <Globe className="h-4 w-4 text-purple-500" />
+                      <span>Polygon</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Button 
+                variant="default" 
+                className="w-full mt-4"
+                disabled={fromNetwork !== "ethereum"}
               >
-                {pendingTransfer.status}
-              </Badge>
-            </CardTitle>
-            <CardDescription>
-              Transfer #{pendingTransfer.id}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="text-sm text-muted-foreground">Amount:</span>
-                <p className="font-semibold">
-                  {pendingTransfer.amount} {pendingTransfer.token}
-                </p>
-              </div>
-              <div>
-                <span className="text-sm text-muted-foreground">Destination:</span>
-                <code className="text-xs bg-muted px-2 py-1 rounded block mt-1">
-                  {pendingTransfer.destinationAddress.slice(0, 12)}...
-                </code>
-              </div>
+                Connect ethereum
+              </Button>
             </div>
 
-            {pendingTransfer.status === "pending" && (
-              <Alert className="border-primary/30 bg-primary/5">
-                <AlertCircle className="h-4 w-4 text-primary" />
-                <AlertDescription>
-                  This transaction requires your signature to complete the destination transfer on Stellar.
-                </AlertDescription>
-              </Alert>
-            )}
+            {/* Swap Button */}
+            <div className="flex justify-center">
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={handleSwapNetworks}
+                className="rounded-full hover:bg-primary/10"
+              >
+                <ArrowUpDown className="h-5 w-5" />
+              </Button>
+            </div>
 
-            {pendingTransfer.status === "completed" && (
-              <Alert className="border-green-500/30 bg-green-500/5">
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
-                <AlertDescription className="text-green-600">
-                  Transaction successfully signed and submitted to the Stellar network!
-                </AlertDescription>
-              </Alert>
-            )}
+            {/* To Network */}
+            <div>
+              <label className="text-sm text-muted-foreground mb-2 block">To Network</label>
+              <Select value={toNetwork} onValueChange={setToNetwork}>
+                <SelectTrigger className="w-full bg-background/80 border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border">
+                  <SelectItem value="stellar">
+                    <div className="flex items-center gap-2">
+                      <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                      <span>Stellar</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="solana">
+                    <div className="flex items-center gap-2">
+                      <Star className="h-4 w-4 text-purple-500" />
+                      <span>Solana</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
 
-            {pendingTransfer.status === "failed" && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  Failed to sign the transaction. Please try again.
-                </AlertDescription>
-              </Alert>
-            )}
+              <Button 
+                variant="default" 
+                className="w-full mt-4"
+                disabled={toNetwork !== "stellar"}
+              >
+                Connect stellar
+              </Button>
+            </div>
 
-            <div className="flex gap-3">
-              {pendingTransfer.status === "pending" && (
-                <Button
-                  onClick={handleCompleteTransfer}
-                  disabled={isSigning}
-                  className="flex-1"
-                >
-                  {isSigning ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Signing...
-                    </>
-                  ) : (
-                    <>
-                      <ArrowRight className="h-4 w-4 mr-2" />
-                      Complete Destination Transfer
-                    </>
-                  )}
-                </Button>
-              )}
+            {/* Token Selection */}
+            <div>
+              <label className="text-sm text-muted-foreground mb-2 block">Token</label>
+              <Select value={token} onValueChange={setToken}>
+                <SelectTrigger className="w-full bg-background/80 border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border">
+                  <SelectItem value="eth">ETH (Ethereum)</SelectItem>
+                  <SelectItem value="usdc">USDC</SelectItem>
+                  <SelectItem value="usdt">USDT</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Right Column - Freighter Connection Status */}
+          <div className="bg-card/50 border border-border rounded-xl p-6">
+            <h2 className="text-xl font-semibold mb-6">Freighter Connection Test</h2>
+            
+            <div className="space-y-4 mb-6">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Freighter Installed:</span>
+                <span className="text-green-500 font-medium">Yes</span>
+              </div>
               
-              {pendingTransfer.status === "failed" && (
-                <Button onClick={handleRetry} className="flex-1" variant="outline">
-                  <ArrowRight className="h-4 w-4 mr-2" />
-                  Retry Signing
-                </Button>
-              )}
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Connection Status:</span>
+                <span className={walletState.isConnected ? "text-green-500" : "text-red-500"}>
+                  {walletState.isConnected ? "Connected" : "Disconnected"}
+                </span>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Permission Status:</span>
+                <span className="text-green-500 font-medium">Granted</span>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+
+            <div className="space-y-3">
+              <Button 
+                onClick={handleCheckConnection}
+                className="w-full"
+                disabled={walletState.isConnected}
+              >
+                Connect to Freighter
+              </Button>
+              
+              <Button 
+                variant="secondary"
+                className="w-full"
+                onClick={() => window.open('chrome://extensions', '_blank')}
+              >
+                Open Freighter Extension
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <FreighterSigningModal open={showSigningModal} onOpenChange={setShowSigningModal} />
