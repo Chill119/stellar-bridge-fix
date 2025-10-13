@@ -1,17 +1,25 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Globe, Star, ArrowUpDown } from "lucide-react";
+import { Globe, Star, ArrowUpDown, Wallet, RefreshCw } from "lucide-react";
 import { useFreighterWallet } from "@/hooks/useFreighterWallet";
 import { FreighterSigningModal } from "./FreighterSigningModal";
+import { useToast } from "@/hooks/use-toast";
+import { executeSwap } from "@/services/swapService";
 
 export function BridgeManagement() {
-  const { walletState, connect } = useFreighterWallet();
+  const { walletState, connect, signTransaction } = useFreighterWallet();
+  const { toast } = useToast();
   const [showSigningModal, setShowSigningModal] = useState(false);
   const [count, setCount] = useState(1);
   const [fromNetwork, setFromNetwork] = useState("ethereum");
   const [toNetwork, setToNetwork] = useState("stellar");
   const [token, setToken] = useState("eth");
+  const [amount, setAmount] = useState("");
+  const [balance, setBalance] = useState("0.00");
+  const [isSwapping, setIsSwapping] = useState(false);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
 
   const handleCheckConnection = async () => {
     if (!walletState.isConnected) {
@@ -27,6 +35,100 @@ export function BridgeManagement() {
     const temp = fromNetwork;
     setFromNetwork(toNetwork);
     setToNetwork(temp);
+  };
+
+  const handleRefreshBalance = async () => {
+    if (!walletState.isConnected) {
+      toast({
+        title: "Wallet not connected",
+        description: "Please connect your wallet first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoadingBalance(true);
+    try {
+      // Simulate balance fetch - in production, query blockchain
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      const mockBalance = (Math.random() * 10).toFixed(4);
+      setBalance(mockBalance);
+      toast({
+        title: "Balance updated",
+        description: `Current balance: ${mockBalance} ${token.toUpperCase()}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to fetch balance",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingBalance(false);
+    }
+  };
+
+  const handleExecuteSwap = async () => {
+    if (!walletState.isConnected) {
+      toast({
+        title: "Wallet not connected",
+        description: "Please connect your wallet first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!amount || parseFloat(amount) <= 0) {
+      toast({
+        title: "Invalid amount",
+        description: "Please enter a valid amount",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (parseFloat(amount) > parseFloat(balance)) {
+      toast({
+        title: "Insufficient balance",
+        description: "Amount exceeds available balance",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSwapping(true);
+    setShowSigningModal(true);
+
+    try {
+      const result = await executeSwap({
+        fromNetwork,
+        toNetwork,
+        token,
+        amount: parseFloat(amount),
+        walletAddress: walletState.address || "",
+        signTransaction,
+      });
+
+      setShowSigningModal(false);
+      
+      toast({
+        title: "Swap successful!",
+        description: `Swapped ${amount} ${token.toUpperCase()} from ${fromNetwork} to ${toNetwork}`,
+      });
+
+      // Reset form
+      setAmount("");
+      handleRefreshBalance();
+    } catch (error) {
+      setShowSigningModal(false);
+      toast({
+        title: "Swap failed",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSwapping(false);
+    }
   };
 
   return (
@@ -152,6 +254,68 @@ export function BridgeManagement() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Amount Input */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm text-muted-foreground">Amount</label>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    Balance: {balance} {token.toUpperCase()}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={handleRefreshBalance}
+                    disabled={!walletState.isConnected || isLoadingBalance}
+                  >
+                    <RefreshCw className={`h-3 w-3 ${isLoadingBalance ? 'animate-spin' : ''}`} />
+                  </Button>
+                </div>
+              </div>
+              <div className="relative">
+                <Input
+                  type="number"
+                  placeholder="0.00"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="w-full bg-background/80 border-border pr-16"
+                  disabled={!walletState.isConnected}
+                  step="0.01"
+                  min="0"
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-7 text-xs"
+                  onClick={() => setAmount(balance)}
+                  disabled={!walletState.isConnected}
+                >
+                  MAX
+                </Button>
+              </div>
+            </div>
+
+            {/* Execute Swap Button */}
+            <Button
+              onClick={handleExecuteSwap}
+              className="w-full"
+              size="lg"
+              disabled={!walletState.isConnected || isSwapping || !amount || parseFloat(amount) <= 0}
+            >
+              {isSwapping ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Processing Swap...
+                </>
+              ) : (
+                <>
+                  <ArrowUpDown className="mr-2 h-4 w-4" />
+                  Execute Swap
+                </>
+              )}
+            </Button>
           </div>
 
           {/* Right Column - Freighter Connection Status */}
