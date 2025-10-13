@@ -8,6 +8,7 @@ export function useEthereumWallet() {
     address: null,
     chainId: null,
     chainName: null,
+    balance: null,
   });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -30,6 +31,7 @@ export function useEthereumWallet() {
             address: null,
             chainId: null,
             chainName: null,
+            balance: null,
           });
         } else {
           checkWallet();
@@ -62,6 +64,7 @@ export function useEthereumWallet() {
         address: result.address,
         chainId: result.chainId,
         chainName: result.chainName,
+        balance: result.balance,
       });
 
       toast({

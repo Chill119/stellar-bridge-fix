@@ -13,6 +13,7 @@ export interface FreighterWalletState {
   address: string | null;
   network: string | null;
   networkPassphrase: string | null;
+  balance: string | null;
 }
 
 export class FreighterWalletError extends Error {
@@ -184,6 +185,32 @@ export async function signStellarTransaction(
   }
 }
 
+
+/**
+ * Get Stellar account balance
+ */
+export async function getStellarBalance(address: string, network: string): Promise<string> {
+  try {
+    const StellarSdk = await import("stellar-sdk");
+    const serverUrl = network === "TESTNET" 
+      ? "https://horizon-testnet.stellar.org"
+      : "https://horizon.stellar.org";
+    
+    const server = new StellarSdk.Horizon.Server(serverUrl);
+    const account = await server.loadAccount(address);
+    
+    // Get native XLM balance
+    const nativeBalance = account.balances.find(
+      (balance: any) => balance.asset_type === 'native'
+    );
+    
+    return nativeBalance ? parseFloat(nativeBalance.balance).toFixed(4) : "0.0000";
+  } catch (error) {
+    console.error("Error fetching Stellar balance:", error);
+    return "0.0000";
+  }
+}
+
 /**
  * Get complete wallet state
  */
@@ -198,6 +225,7 @@ export async function getFreighterWalletState(): Promise<FreighterWalletState> {
         address: null,
         network: null,
         networkPassphrase: null,
+        balance: null,
       };
     }
 
@@ -207,6 +235,7 @@ export async function getFreighterWalletState(): Promise<FreighterWalletState> {
     let address = null;
     let network = null;
     let networkPassphrase = null;
+    let balance = null;
     
     if (isUserAllowed) {
       try {
@@ -216,6 +245,11 @@ export async function getFreighterWalletState(): Promise<FreighterWalletState> {
         const networkResult = await getNetwork();
         network = networkResult.network;
         networkPassphrase = networkResult.networkPassphrase;
+
+        // Get balance if we have address and network
+        if (address && network) {
+          balance = await getStellarBalance(address, network);
+        }
       } catch (error) {
         console.error("Failed to get wallet details:", error);
       }
@@ -227,6 +261,7 @@ export async function getFreighterWalletState(): Promise<FreighterWalletState> {
       address,
       network,
       networkPassphrase,
+      balance,
     };
   } catch (error) {
     console.error("Failed to get Freighter wallet state:", error);
@@ -236,6 +271,7 @@ export async function getFreighterWalletState(): Promise<FreighterWalletState> {
       address: null,
       network: null,
       networkPassphrase: null,
+      balance: null,
     };
   }
 }

@@ -383,21 +383,37 @@ export function BridgeManagement() {
             </div>
 
             <div className="space-y-3">
-              <Button 
-                onClick={handleConnectEthereum}
-                className="w-full"
-                disabled={ethereumWallet.isConnected}
-              >
-                {ethereumWallet.isConnected ? "Ethereum Connected" : "Connect MetaMask"}
-              </Button>
+              <div>
+                <Button 
+                  onClick={handleConnectEthereum}
+                  className="w-full"
+                  disabled={ethereumWallet.isConnected}
+                >
+                  {ethereumWallet.isConnected ? "Ethereum Connected" : "Connect MetaMask"}
+                </Button>
+                {ethereumWallet.isConnected && ethereumWallet.balance && (
+                  <div className="mt-2 text-sm text-center">
+                    <span className="text-muted-foreground">Available: </span>
+                    <span className="font-semibold text-primary">{ethereumWallet.balance} ETH</span>
+                  </div>
+                )}
+              </div>
               
-              <Button 
-                onClick={handleConnectStellar}
-                className="w-full"
-                disabled={stellarWallet.isConnected}
-              >
-                {stellarWallet.isConnected ? "Stellar Connected" : "Connect Freighter"}
-              </Button>
+              <div>
+                <Button 
+                  onClick={handleConnectStellar}
+                  className="w-full"
+                  disabled={stellarWallet.isConnected}
+                >
+                  {stellarWallet.isConnected ? "Stellar Connected" : "Connect Freighter"}
+                </Button>
+                {stellarWallet.isConnected && stellarWallet.balance && (
+                  <div className="mt-2 text-sm text-center">
+                    <span className="text-muted-foreground">Available: </span>
+                    <span className="font-semibold text-primary">{stellarWallet.balance} XLM</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

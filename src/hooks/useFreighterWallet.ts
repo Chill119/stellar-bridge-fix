@@ -15,6 +15,7 @@ export function useFreighterWallet() {
     address: null,
     network: null,
     networkPassphrase: null,
+    balance: null,
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSigning, setIsSigning] = useState(false);
@@ -38,6 +39,7 @@ export function useFreighterWallet() {
             address: null,
             network: null,
             networkPassphrase: null,
+            balance: null,
           });
         }
       } finally {

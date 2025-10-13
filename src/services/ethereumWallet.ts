@@ -3,6 +3,7 @@ export interface EthereumWalletState {
   address: string | null;
   chainId: string | null;
   chainName: string | null;
+  balance: string | null;
 }
 
 export class EthereumWalletError extends Error {
@@ -32,6 +33,7 @@ export async function connectEthereumWallet(): Promise<{
   address: string;
   chainId: string;
   chainName: string;
+  balance: string;
 }> {
   if (!await checkEthereumWallet()) {
     throw new EthereumWalletError(
@@ -56,10 +58,14 @@ export async function connectEthereumWallet(): Promise<{
       method: 'eth_chainId',
     });
 
+    // Get balance
+    const balance = await getEthereumBalance(accounts[0]);
+
     return {
       address: accounts[0],
       chainId,
       chainName: CHAIN_NAMES[chainId] || `Chain ${chainId}`,
+      balance,
     };
   } catch (error: any) {
     if (error.code === 4001) {
@@ -109,6 +115,28 @@ export async function getEthereumChainId(): Promise<string | null> {
   }
 }
 
+export async function getEthereumBalance(address: string): Promise<string> {
+  if (!await checkEthereumWallet()) {
+    throw new EthereumWalletError("Ethereum wallet not detected");
+  }
+
+  const ethereum = (window as any).ethereum;
+
+  try {
+    const balance = await ethereum.request({
+      method: 'eth_getBalance',
+      params: [address, 'latest'],
+    });
+
+    // Convert from wei to ETH
+    const balanceInEth = parseInt(balance, 16) / 1e18;
+    return balanceInEth.toFixed(4);
+  } catch (error) {
+    console.error("Error getting Ethereum balance:", error);
+    throw new EthereumWalletError("Failed to fetch balance");
+  }
+}
+
 export async function getEthereumWalletState(): Promise<EthereumWalletState> {
   const hasWallet = await checkEthereumWallet();
 
@@ -118,17 +146,28 @@ export async function getEthereumWalletState(): Promise<EthereumWalletState> {
       address: null,
       chainId: null,
       chainName: null,
+      balance: null,
     };
   }
 
   const address = await getEthereumAddress();
   const chainId = await getEthereumChainId();
+  let balance: string | null = null;
+
+  if (address) {
+    try {
+      balance = await getEthereumBalance(address);
+    } catch (error) {
+      console.error("Error fetching balance:", error);
+    }
+  }
 
   return {
     isConnected: !!address,
     address,
     chainId,
     chainName: chainId ? CHAIN_NAMES[chainId] || `Chain ${chainId}` : null,
+    balance,
   };
 }
 
