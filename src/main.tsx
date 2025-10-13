@@ -3,10 +3,19 @@
 if (typeof window !== "undefined") {
   // @ts-ignore - Prevent SES lockdown from being applied
   window.LOCKDOWN = false;
-  // @ts-ignore - Override lockdown function if it exists
-  if (typeof globalThis.lockdown === "function") {
-    globalThis.lockdown = () => {};
-  }
+  
+  // @ts-ignore - Override lockdown and harden functions
+  Object.defineProperty(globalThis, 'lockdown', {
+    value: () => {},
+    writable: true,
+    configurable: true
+  });
+  
+  Object.defineProperty(globalThis, 'harden', {
+    value: (obj: any) => obj,
+    writable: true,
+    configurable: true
+  });
 }
 
 import { createRoot } from "react-dom/client";

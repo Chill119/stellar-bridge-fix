@@ -4,12 +4,14 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Globe, Star, ArrowUpDown, Wallet, RefreshCw } from "lucide-react";
 import { useFreighterWallet } from "@/hooks/useFreighterWallet";
+import { useEthereumWallet } from "@/hooks/useEthereumWallet";
 import { FreighterSigningModal } from "./FreighterSigningModal";
 import { useToast } from "@/hooks/use-toast";
 import { executeSwap } from "@/services/swapService";
 
 export function BridgeManagement() {
-  const { walletState, connect, signTransaction } = useFreighterWallet();
+  const { walletState: stellarWallet, connect: connectStellar, signTransaction } = useFreighterWallet();
+  const { walletState: ethereumWallet, connect: connectEthereum } = useEthereumWallet();
   const { toast } = useToast();
   const [showSigningModal, setShowSigningModal] = useState(false);
   const [count, setCount] = useState(1);
@@ -21,9 +23,23 @@ export function BridgeManagement() {
   const [isSwapping, setIsSwapping] = useState(false);
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
 
+  const handleConnectEthereum = async () => {
+    if (!ethereumWallet.isConnected) {
+      await connectEthereum();
+    }
+  };
+
+  const handleConnectStellar = async () => {
+    if (!stellarWallet.isConnected) {
+      await connectStellar();
+    }
+  };
+
   const handleCheckConnection = async () => {
-    if (!walletState.isConnected) {
-      await connect();
+    if (fromNetwork === "ethereum" && !ethereumWallet.isConnected) {
+      await connectEthereum();
+    } else if (toNetwork === "stellar" && !stellarWallet.isConnected) {
+      await connectStellar();
     }
   };
 
@@ -38,7 +54,11 @@ export function BridgeManagement() {
   };
 
   const handleRefreshBalance = async () => {
-    if (!walletState.isConnected) {
+    const isConnected = 
+      (fromNetwork === "ethereum" && ethereumWallet.isConnected) ||
+      (toNetwork === "stellar" && stellarWallet.isConnected);
+    
+    if (!isConnected) {
       toast({
         title: "Wallet not connected",
         description: "Please connect your wallet first",
@@ -69,10 +89,14 @@ export function BridgeManagement() {
   };
 
   const handleExecuteSwap = async () => {
-    if (!walletState.isConnected) {
+    const bothConnected = 
+      (fromNetwork === "ethereum" && ethereumWallet.isConnected) &&
+      (toNetwork === "stellar" && stellarWallet.isConnected);
+    
+    if (!bothConnected) {
       toast({
-        title: "Wallet not connected",
-        description: "Please connect your wallet first",
+        title: "Wallets not connected",
+        description: "Please connect both source and destination wallets",
         variant: "destructive",
       });
       return;
@@ -100,12 +124,16 @@ export function BridgeManagement() {
     setShowSigningModal(true);
 
     try {
+      const walletAddress = fromNetwork === "ethereum" 
+        ? ethereumWallet.address || ""
+        : stellarWallet.address || "";
+
       const result = await executeSwap({
         fromNetwork,
         toNetwork,
         token,
         amount: parseFloat(amount),
-        walletAddress: walletState.address || "",
+        walletAddress,
         signTransaction,
       });
 
@@ -190,9 +218,10 @@ export function BridgeManagement() {
               <Button 
                 variant="default" 
                 className="w-full mt-4"
-                disabled={fromNetwork !== "ethereum"}
+                disabled={fromNetwork !== "ethereum" || ethereumWallet.isConnected}
+                onClick={handleConnectEthereum}
               >
-                Connect ethereum
+                {ethereumWallet.isConnected ? "Ethereum Connected" : "Connect Ethereum"}
               </Button>
             </div>
 
@@ -234,9 +263,10 @@ export function BridgeManagement() {
               <Button 
                 variant="default" 
                 className="w-full mt-4"
-                disabled={toNetwork !== "stellar"}
+                disabled={toNetwork !== "stellar" || stellarWallet.isConnected}
+                onClick={handleConnectStellar}
               >
-                Connect stellar
+                {stellarWallet.isConnected ? "Stellar Connected" : "Connect Stellar"}
               </Button>
             </div>
 
@@ -268,11 +298,11 @@ export function BridgeManagement() {
                     size="icon"
                     className="h-6 w-6"
                     onClick={handleRefreshBalance}
-                    disabled={!walletState.isConnected || isLoadingBalance}
-                  >
-                    <RefreshCw className={`h-3 w-3 ${isLoadingBalance ? 'animate-spin' : ''}`} />
-                  </Button>
-                </div>
+                  disabled={(!ethereumWallet.isConnected && !stellarWallet.isConnected) || isLoadingBalance}
+                >
+                  <RefreshCw className={`h-3 w-3 ${isLoadingBalance ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
               </div>
               <div className="relative">
                 <Input
@@ -281,7 +311,7 @@ export function BridgeManagement() {
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   className="w-full bg-background/80 border-border pr-16"
-                  disabled={!walletState.isConnected}
+                  disabled={!ethereumWallet.isConnected && !stellarWallet.isConnected}
                   step="0.01"
                   min="0"
                 />
@@ -290,7 +320,7 @@ export function BridgeManagement() {
                   size="sm"
                   className="absolute right-2 top-1/2 -translate-y-1/2 h-7 text-xs"
                   onClick={() => setAmount(balance)}
-                  disabled={!walletState.isConnected}
+                  disabled={!ethereumWallet.isConnected && !stellarWallet.isConnected}
                 >
                   MAX
                 </Button>
@@ -302,7 +332,7 @@ export function BridgeManagement() {
               onClick={handleExecuteSwap}
               className="w-full"
               size="lg"
-              disabled={!walletState.isConnected || isSwapping || !amount || parseFloat(amount) <= 0}
+              disabled={!ethereumWallet.isConnected || !stellarWallet.isConnected || isSwapping || !amount || parseFloat(amount) <= 0}
             >
               {isSwapping ? (
                 <>
@@ -324,38 +354,49 @@ export function BridgeManagement() {
             
             <div className="space-y-4 mb-6">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Freighter Installed:</span>
-                <span className="text-green-500 font-medium">Yes</span>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Connection Status:</span>
-                <span className={walletState.isConnected ? "text-green-500" : "text-red-500"}>
-                  {walletState.isConnected ? "Connected" : "Disconnected"}
+                <span className="text-muted-foreground">Ethereum Wallet:</span>
+                <span className={ethereumWallet.isConnected ? "text-green-500" : "text-muted-foreground"}>
+                  {ethereumWallet.isConnected ? "Connected" : "Not Connected"}
                 </span>
               </div>
               
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Permission Status:</span>
-                <span className="text-green-500 font-medium">Granted</span>
+                <span className="text-muted-foreground">Stellar Wallet:</span>
+                <span className={stellarWallet.isConnected ? "text-green-500" : "text-muted-foreground"}>
+                  {stellarWallet.isConnected ? "Connected" : "Not Connected"}
+                </span>
               </div>
+              
+              {ethereumWallet.isConnected && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Ethereum Chain:</span>
+                  <span className="text-green-500 font-medium text-sm">{ethereumWallet.chainName}</span>
+                </div>
+              )}
+              
+              {stellarWallet.isConnected && stellarWallet.network && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Stellar Network:</span>
+                  <span className="text-green-500 font-medium text-sm">{stellarWallet.network}</span>
+                </div>
+              )}
             </div>
 
             <div className="space-y-3">
               <Button 
-                onClick={handleCheckConnection}
+                onClick={handleConnectEthereum}
                 className="w-full"
-                disabled={walletState.isConnected}
+                disabled={ethereumWallet.isConnected}
               >
-                Connect to Freighter
+                {ethereumWallet.isConnected ? "Ethereum Connected" : "Connect MetaMask"}
               </Button>
               
               <Button 
-                variant="secondary"
+                onClick={handleConnectStellar}
                 className="w-full"
-                onClick={() => window.open('chrome://extensions', '_blank')}
+                disabled={stellarWallet.isConnected}
               >
-                Open Freighter Extension
+                {stellarWallet.isConnected ? "Stellar Connected" : "Connect Freighter"}
               </Button>
             </div>
           </div>
