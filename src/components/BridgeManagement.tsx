@@ -359,7 +359,7 @@ export function BridgeManagement() {
                 {ethereumWallet.isConnected && ethereumWallet.balance && (
                   <div className="mt-2 text-sm text-center">
                     <span className="text-muted-foreground">Available: </span>
-                    <span className="font-semibold text-primary">{ethereumWallet.balance} ETH</span>
+                    <span className="font-semibold text-primary">{parseFloat(ethereumWallet.balance).toFixed(4)} ETH</span>
                   </div>
                 )}
               </div>
@@ -372,10 +372,24 @@ export function BridgeManagement() {
                 >
                   {stellarWallet.isConnected ? "Stellar Connected" : "Connect Freighter"}
                 </Button>
-                {stellarWallet.isConnected && stellarWallet.balance && (
+                {stellarWallet.isConnected && (
                   <div className="mt-2 text-sm text-center">
                     <span className="text-muted-foreground">Available: </span>
-                    <span className="font-semibold text-primary">{stellarWallet.balance} XLM</span>
+                    <span className="font-semibold text-primary">
+                      {stellarWallet.balance ? parseFloat(stellarWallet.balance).toFixed(4) : '0.0000'} XLM
+                    </span>
+                    {stellarWallet.balance === "0.0000" && (
+                      <div className="mt-1 text-xs text-yellow-600 dark:text-yellow-500">
+                        Account needs funding. <a 
+                          href="https://laboratory.stellar.org/#account-creator?network=test" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="underline hover:text-yellow-700 dark:hover:text-yellow-400"
+                        >
+                          Fund testnet account
+                        </a>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

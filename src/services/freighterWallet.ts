@@ -205,7 +205,12 @@ export async function getStellarBalance(address: string, network: string): Promi
     );
     
     return nativeBalance ? parseFloat(nativeBalance.balance).toFixed(4) : "0.0000";
-  } catch (error) {
+  } catch (error: any) {
+    // Handle 404 - account doesn't exist (unfunded)
+    if (error?.response?.status === 404) {
+      console.log("Stellar account not yet funded");
+      return "0.0000";
+    }
     console.error("Error fetching Stellar balance:", error);
     return "0.0000";
   }
