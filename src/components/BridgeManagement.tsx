@@ -19,9 +19,7 @@ export function BridgeManagement() {
   const [toNetwork, setToNetwork] = useState("stellar");
   const [token, setToken] = useState("eth");
   const [amount, setAmount] = useState("");
-  const [balance, setBalance] = useState("0.00");
   const [isSwapping, setIsSwapping] = useState(false);
-  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
 
   const handleConnectEthereum = async () => {
     if (!ethereumWallet.isConnected) {
@@ -53,40 +51,18 @@ export function BridgeManagement() {
     setToNetwork(temp);
   };
 
-  const handleRefreshBalance = async () => {
-    const isConnected = 
-      (fromNetwork === "ethereum" && ethereumWallet.isConnected) ||
-      (toNetwork === "stellar" && stellarWallet.isConnected);
-    
-    if (!isConnected) {
-      toast({
-        title: "Wallet not connected",
-        description: "Please connect your wallet first",
-        variant: "destructive",
-      });
-      return;
+  // Get the current balance based on selected network
+  const getCurrentBalance = (): string => {
+    if (fromNetwork === "ethereum" && ethereumWallet.isConnected && ethereumWallet.balance) {
+      return ethereumWallet.balance;
     }
-
-    setIsLoadingBalance(true);
-    try {
-      // Simulate balance fetch - in production, query blockchain
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      const mockBalance = (Math.random() * 10).toFixed(4);
-      setBalance(mockBalance);
-      toast({
-        title: "Balance updated",
-        description: `Current balance: ${mockBalance} ${token.toUpperCase()}`,
-      });
-    } catch (error) {
-      toast({
-        title: "Failed to fetch balance",
-        description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoadingBalance(false);
+    if (fromNetwork === "stellar" && stellarWallet.isConnected && stellarWallet.balance) {
+      return stellarWallet.balance;
     }
+    return "0.00";
   };
+
+  const balance = getCurrentBalance();
 
   const handleExecuteSwap = async () => {
     const bothConnected = 
@@ -144,9 +120,8 @@ export function BridgeManagement() {
         description: `Swapped ${amount} ${token.toUpperCase()} from ${fromNetwork} to ${toNetwork}`,
       });
 
-      // Reset form
+      // Reset form and refresh balances
       setAmount("");
-      handleRefreshBalance();
     } catch (error) {
       setShowSigningModal(false);
       toast({
@@ -291,17 +266,8 @@ export function BridgeManagement() {
                 <label className="text-sm text-muted-foreground">Amount</label>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">
-                    Balance: {balance} {token.toUpperCase()}
+                    Balance: {balance} {fromNetwork === "ethereum" ? "ETH" : "XLM"}
                   </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={handleRefreshBalance}
-                  disabled={(!ethereumWallet.isConnected && !stellarWallet.isConnected) || isLoadingBalance}
-                >
-                  <RefreshCw className={`h-3 w-3 ${isLoadingBalance ? 'animate-spin' : ''}`} />
-                </Button>
               </div>
               </div>
               <div className="relative">
