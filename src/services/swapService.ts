@@ -43,8 +43,28 @@ async function executeStellarSwap(params: SwapParams): Promise<SwapResult> {
     const server = new StellarSdk.Horizon.Server("https://horizon-testnet.stellar.org");
     const networkPassphrase = StellarSdk.Networks.TESTNET;
 
+    // For Stellar operations, we need the Stellar address
+    // When swapping FROM Stellar, walletAddress is already the Stellar address
+    // When swapping TO Stellar, we need to get it from Freighter
+    let stellarAddress = walletAddress;
+    
+    // If swapping from another network to Stellar, we need to verify Stellar wallet is connected
+    if (fromNetwork !== "stellar" && toNetwork === "stellar") {
+      // The walletAddress would be from the source network, we need Stellar address from Freighter
+      // This will be handled by the calling component passing the correct address
+      throw new Error("Please ensure your Stellar wallet is connected for the destination network");
+    }
+
     // Load source account
-    const sourceAccount = await server.loadAccount(walletAddress);
+    let sourceAccount;
+    try {
+      sourceAccount = await server.loadAccount(stellarAddress);
+    } catch (error: any) {
+      if (error?.response?.status === 404) {
+        throw new Error("Stellar account not found. Please fund your Stellar wallet first. Visit https://laboratory.stellar.org/#account-creator?network=test to create and fund a testnet account.");
+      }
+      throw error;
+    }
 
     // Create a simple payment transaction as a placeholder
     // In production, this would interact with a bridge contract

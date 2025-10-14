@@ -15,8 +15,8 @@ export function BridgeManagement() {
   const { toast } = useToast();
   const [showSigningModal, setShowSigningModal] = useState(false);
   const [count, setCount] = useState(1);
-  const [fromNetwork, setFromNetwork] = useState("ethereum");
-  const [toNetwork, setToNetwork] = useState("stellar");
+  const [fromNetwork, setFromNetwork] = useState<string>("ethereum");
+  const [toNetwork, setToNetwork] = useState<string>("stellar");
   const [token, setToken] = useState("eth");
   const [amount, setAmount] = useState("");
   const [isSwapping, setIsSwapping] = useState(false);
@@ -100,9 +100,8 @@ export function BridgeManagement() {
     setShowSigningModal(true);
 
     try {
-      const walletAddress = fromNetwork === "ethereum" 
-        ? ethereumWallet.address || ""
-        : stellarWallet.address || "";
+      // Always use Stellar address when dealing with Stellar swaps
+      const walletAddress = stellarWallet.address || ethereumWallet.address || "";
 
       const result = await executeSwap({
         fromNetwork,
