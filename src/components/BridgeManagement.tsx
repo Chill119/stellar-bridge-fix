@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { executeSwap } from "@/services/swapService";
 
 export function BridgeManagement() {
-  const { walletState: stellarWallet, connect: connectStellar, signTransaction } = useFreighterWallet();
+  const { walletState: stellarWallet, connect: connectStellar, signTransaction, refresh: refreshStellar } = useFreighterWallet();
   const { walletState: ethereumWallet, connect: connectEthereum } = useEthereumWallet();
   const { toast } = useToast();
   const [showSigningModal, setShowSigningModal] = useState(false);
@@ -112,8 +112,6 @@ export function BridgeManagement() {
         signTransaction,
       });
 
-      setShowSigningModal(false);
-      
       toast({
         title: "Swap successful!",
         description: `Swapped ${amount} ${token.toUpperCase()} from ${fromNetwork} to ${toNetwork}`,
@@ -121,8 +119,10 @@ export function BridgeManagement() {
 
       // Reset form and refresh balances
       setAmount("");
+      
+      // Refresh Stellar balance after successful swap
+      await refreshStellar();
     } catch (error) {
-      setShowSigningModal(false);
       toast({
         title: "Swap failed",
         description: error instanceof Error ? error.message : "Unknown error",
@@ -130,6 +130,7 @@ export function BridgeManagement() {
       });
     } finally {
       setIsSwapping(false);
+      setShowSigningModal(false);
     }
   };
 
@@ -137,6 +138,11 @@ export function BridgeManagement() {
     <div className="min-h-screen bg-background">
       {/* Header Section */}
       <div className="container mx-auto px-4 py-12 text-center">
+        <div className="bg-yellow-500/10 border-2 border-yellow-500 rounded-lg px-6 py-3 mb-6 max-w-2xl mx-auto">
+          <p className="text-yellow-600 dark:text-yellow-500 font-bold text-center text-lg">
+            ⚠️ BETA - DO NOT USE REAL MONEY ⚠️
+          </p>
+        </div>
         <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
           London Blockchain Bridge
         </h1>
@@ -374,10 +380,21 @@ export function BridgeManagement() {
                 </Button>
                 {stellarWallet.isConnected && (
                   <div className="mt-2 text-sm text-center">
-                    <span className="text-muted-foreground">Available: </span>
-                    <span className="font-semibold text-primary">
-                      {stellarWallet.balance ? parseFloat(stellarWallet.balance).toFixed(4) : '0.0000'} XLM
-                    </span>
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="text-muted-foreground">Available: </span>
+                      <span className="font-semibold text-primary">
+                        {stellarWallet.balance ? parseFloat(stellarWallet.balance).toFixed(4) : '0.0000'} XLM
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5"
+                        onClick={refreshStellar}
+                        title="Refresh balance"
+                      >
+                        <RefreshCw className="h-3 w-3" />
+                      </Button>
+                    </div>
                     {stellarWallet.balance === "0.0000" && (
                       <div className="mt-1 text-xs text-yellow-600 dark:text-yellow-500">
                         Account needs funding. <a 

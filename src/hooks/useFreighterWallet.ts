@@ -71,6 +71,29 @@ export function useFreighterWallet() {
     };
   }, []);
 
+  // Polling mechanism to keep balance updated when connected
+  useEffect(() => {
+    let pollInterval: NodeJS.Timeout | null = null;
+    
+    if (walletState.isConnected && walletState.address) {
+      // Poll balance every 15 seconds when wallet is connected
+      pollInterval = setInterval(async () => {
+        try {
+          const state = await getFreighterWalletState();
+          setWalletState(state);
+        } catch (error) {
+          console.error("Failed to poll wallet state:", error);
+        }
+      }, 15000);
+    }
+    
+    return () => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+    };
+  }, [walletState.isConnected, walletState.address]);
+
   /**
    * Request access to Freighter wallet
    */

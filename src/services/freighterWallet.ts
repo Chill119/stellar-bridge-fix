@@ -128,6 +128,9 @@ export async function signStellarTransaction(
       throw new FreighterWalletError("Invalid XDR string", "INVALID_XDR");
     }
 
+    console.log("Preparing to sign transaction with Freighter...");
+    console.log("Network:", network, "Passphrase:", networkPassphrase ? "provided" : "not provided");
+
     // Ensure window is focused to prevent popup blocking
     if (typeof window !== 'undefined') {
       window.focus();
@@ -138,16 +141,21 @@ export async function signStellarTransaction(
     
     if (network) {
       signOptions.network = network;
+      console.log("Using network:", network);
     } else if (networkPassphrase) {
       signOptions.networkPassphrase = networkPassphrase;
+      console.log("Using network passphrase");
     } else {
       // Use current Freighter network
       const currentNetwork = await getFreighterNetwork();
       signOptions.networkPassphrase = currentNetwork.networkPassphrase;
+      console.log("Using current Freighter network:", currentNetwork.network);
     }
 
+    console.log("Opening Freighter wallet for signature...");
     // Sign the transaction - this will trigger the wallet popup
     const result = await signTransaction(xdr, signOptions);
+    console.log("Freighter returned signature result");
     
     if (result.error) {
       // Handle specific error cases
@@ -192,7 +200,9 @@ export async function signStellarTransaction(
 export async function getStellarBalance(address: string, network: string): Promise<string> {
   try {
     const StellarSdk = await import("stellar-sdk");
-    const serverUrl = network === "TESTNET" 
+    // Make network comparison case-insensitive
+    const networkUpper = network.toUpperCase();
+    const serverUrl = networkUpper === "TESTNET" || networkUpper.includes("TEST")
       ? "https://horizon-testnet.stellar.org"
       : "https://horizon.stellar.org";
     

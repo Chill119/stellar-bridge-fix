@@ -73,9 +73,12 @@ async function executeStellarSwap(params: SwapParams): Promise<SwapResult> {
 
     // Get XDR for signing
     const xdr = transaction.toXDR();
+    
+    console.log("Creating Stellar transaction for signing...");
+    console.log("Transaction XDR (preview):", xdr.substring(0, 50) + "...");
 
-    // Sign transaction via Freighter
-    const { signedXdr } = await signTransaction(xdr, "TESTNET", networkPassphrase);
+    // Sign transaction via Freighter - only pass network name
+    const { signedXdr } = await signTransaction(xdr, "TESTNET");
 
     // Parse signed transaction
     const signedTransaction = StellarSdk.TransactionBuilder.fromXDR(
@@ -84,7 +87,9 @@ async function executeStellarSwap(params: SwapParams): Promise<SwapResult> {
     );
 
     // Submit to network
+    console.log("Submitting signed transaction to Stellar network...");
     const result = await server.submitTransaction(signedTransaction);
+    console.log("Transaction submitted successfully:", result.hash);
 
     return {
       transactionHash: result.hash,
@@ -96,7 +101,15 @@ async function executeStellarSwap(params: SwapParams): Promise<SwapResult> {
     };
   } catch (error) {
     console.error("Stellar swap error:", error);
-    throw new Error(`Stellar swap failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+    
+    // Provide more specific error messages
+    if (error instanceof Error) {
+      if (error.message.includes("account not funded")) {
+        throw error; // Pass through the helpful error message
+      }
+      throw new Error(`Stellar swap failed: ${error.message}`);
+    }
+    throw new Error("Stellar swap failed: Unknown error");
   }
 }
 
