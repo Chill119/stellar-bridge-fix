@@ -88,17 +88,45 @@ async function executeStellarSwap(params: SwapParams): Promise<SwapResult> {
 
     // Submit to network
     console.log("Submitting signed transaction to Stellar network...");
-    const result = await server.submitTransaction(signedTransaction);
-    console.log("Transaction submitted successfully:", result.hash);
+    
+    try {
+      const result = await server.submitTransaction(signedTransaction as any);
+      console.log("Transaction submitted successfully:", result.hash);
 
-    return {
-      transactionHash: result.hash,
-      status: "success",
-      fromNetwork,
-      toNetwork,
-      amount,
-      token,
-    };
+      return {
+        transactionHash: result.hash,
+        status: "success",
+        fromNetwork,
+        toNetwork,
+        amount,
+        token,
+      };
+    } catch (submitError: any) {
+      console.error("Transaction submission failed:", submitError);
+      
+      // Log detailed error information from Horizon
+      if (submitError.response?.data) {
+        console.error("Horizon error details:", JSON.stringify(submitError.response.data, null, 2));
+      }
+      
+      // Check for specific Horizon errors
+      if (submitError.response?.data?.extras?.result_codes) {
+        const resultCodes = submitError.response.data.extras.result_codes;
+        console.error("Transaction result codes:", resultCodes);
+        
+        if (resultCodes.transaction === "tx_bad_seq") {
+          throw new Error("Transaction sequence number mismatch. Please try again.");
+        }
+        if (resultCodes.transaction === "tx_insufficient_balance") {
+          throw new Error("Insufficient balance to complete the transaction.");
+        }
+        if (resultCodes.transaction === "tx_bad_auth") {
+          throw new Error("Transaction authentication failed. Please check your wallet.");
+        }
+      }
+      
+      throw new Error(`Transaction submission failed: ${submitError.message || "Unknown error"}`);
+    }
   } catch (error) {
     console.error("Stellar swap error:", error);
     
@@ -106,6 +134,9 @@ async function executeStellarSwap(params: SwapParams): Promise<SwapResult> {
     if (error instanceof Error) {
       if (error.message.includes("account not funded")) {
         throw error; // Pass through the helpful error message
+      }
+      if (error.message.includes("Transaction submission failed")) {
+        throw error; // Pass through detailed error
       }
       throw new Error(`Stellar swap failed: ${error.message}`);
     }
