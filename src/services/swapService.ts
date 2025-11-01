@@ -91,9 +91,10 @@ async function executeStellarSwap(params: SwapParams): Promise<SwapResult> {
     console.log("Amount:", amount, "XLM");
     console.log("Network:", "TESTNET");
 
-    // Sign transaction via Freighter - only pass network name
+    // Sign transaction via Freighter - pass the network passphrase to match transaction
     console.log("=== Requesting signature from Freighter ===");
-    const { signedXdr } = await signTransaction(xdr, "TESTNET");
+    console.log("Using network passphrase:", networkPassphrase);
+    const { signedXdr } = await signTransaction(xdr, undefined, networkPassphrase);
     console.log("=== Signature received ===");
     console.log("Signed XDR length:", signedXdr.length);
 
