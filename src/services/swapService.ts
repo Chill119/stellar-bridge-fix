@@ -83,17 +83,27 @@ async function executeStellarSwap(params: SwapParams): Promise<SwapResult> {
     // Get XDR for signing
     const xdr = transaction.toXDR();
     
-    console.log("Creating Stellar transaction for signing...");
-    console.log("Transaction XDR (preview):", xdr.substring(0, 50) + "...");
+    console.log("=== Stellar Transaction Built ===");
+    console.log("Transaction XDR length:", xdr.length);
+    console.log("Transaction preview:", xdr.substring(0, 50) + "...");
+    console.log("Source account:", walletAddress);
+    console.log("Destination:", BRIDGE_ADDRESS);
+    console.log("Amount:", amount, "XLM");
+    console.log("Network:", "TESTNET");
 
     // Sign transaction via Freighter - only pass network name
+    console.log("=== Requesting signature from Freighter ===");
     const { signedXdr } = await signTransaction(xdr, "TESTNET");
+    console.log("=== Signature received ===");
+    console.log("Signed XDR length:", signedXdr.length);
 
     // Parse signed transaction
+    console.log("=== Parsing signed transaction ===");
     const signedTransaction = StellarSdk.TransactionBuilder.fromXDR(
       signedXdr,
       networkPassphrase
     );
+    console.log("Transaction parsed successfully");
 
     // Submit to network
     console.log("Submitting signed transaction to Stellar network...");

@@ -132,22 +132,28 @@ export function useFreighterWallet() {
    */
   const signTransaction = useCallback(
     async (xdr: string, network?: string, networkPassphrase?: string) => {
+      console.log("=== Hook: signTransaction called ===");
       setIsSigning(true);
       
       // Focus window to ensure popup isn't blocked
       if (typeof window !== 'undefined') {
         window.focus();
+        console.log("Hook: Window focused");
       }
       
       try {
+        console.log("Hook: Calling signStellarTransaction service...");
         const result = await signStellarTransaction(xdr, network, networkPassphrase);
         
+        console.log("Hook: Transaction signed successfully");
         toast.success("Transaction signed successfully", {
-          description: `Signed by ${result.signerAddress.slice(0, 8)}...`,
+          description: `Signed by ${result.signerAddress.slice(0, 8)}...${result.signerAddress.slice(-4)}`,
         });
         
         return result;
       } catch (error) {
+        console.error("Hook: Signing error caught:", error);
+        
         if (error instanceof FreighterWalletError) {
           if (error.code === "USER_DECLINED") {
             toast.error("Transaction declined", {
@@ -159,7 +165,15 @@ export function useFreighterWallet() {
             });
           } else if (error.code === "NETWORK_MISMATCH") {
             toast.error("Network mismatch", {
-              description: error.message,
+              description: "Please switch Freighter to TESTNET network",
+            });
+          } else if (error.code === "NOT_CONNECTED") {
+            toast.error("Freighter not connected", {
+              description: "Please install and unlock Freighter extension",
+            });
+          } else if (error.code === "POPUP_BLOCKED") {
+            toast.error("Popup blocked", {
+              description: "Please allow popups for this site",
             });
           } else {
             toast.error("Failed to sign transaction", {
@@ -168,11 +182,12 @@ export function useFreighterWallet() {
           }
         } else {
           toast.error("Failed to sign transaction", {
-            description: "An unexpected error occurred",
+            description: "An unexpected error occurred. Check console for details.",
           });
         }
         throw error;
       } finally {
+        console.log("Hook: Signing process complete");
         setIsSigning(false);
       }
     },

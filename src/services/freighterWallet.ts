@@ -128,12 +128,31 @@ export async function signStellarTransaction(
       throw new FreighterWalletError("Invalid XDR string", "INVALID_XDR");
     }
 
-    console.log("Preparing to sign transaction with Freighter...");
-    console.log("Network:", network, "Passphrase:", networkPassphrase ? "provided" : "not provided");
+    console.log("=== Freighter Signing Process Started ===");
+    console.log("XDR length:", xdr.length);
+    console.log("Network:", network || "not specified");
+    console.log("Network Passphrase:", networkPassphrase ? "provided" : "not provided");
+
+    // Check if Freighter is connected
+    const connected = await checkFreighterConnection();
+    if (!connected) {
+      throw new FreighterWalletError(
+        "Freighter is not connected. Please install and unlock Freighter extension.",
+        "NOT_CONNECTED"
+      );
+    }
+
+    // Verify user has granted access
+    const allowedResult = await isAllowed();
+    if (!allowedResult.isAllowed) {
+      console.log("User access not granted, requesting...");
+      await requestFreighterAccess();
+    }
 
     // Ensure window is focused to prevent popup blocking
     if (typeof window !== 'undefined') {
       window.focus();
+      console.log("Window focused for popup");
     }
 
     // Get network info if not provided
@@ -141,10 +160,10 @@ export async function signStellarTransaction(
     
     if (network) {
       signOptions.network = network;
-      console.log("Using network:", network);
+      console.log("Using specified network:", network);
     } else if (networkPassphrase) {
       signOptions.networkPassphrase = networkPassphrase;
-      console.log("Using network passphrase");
+      console.log("Using provided network passphrase");
     } else {
       // Use current Freighter network
       const currentNetwork = await getFreighterNetwork();
@@ -152,42 +171,64 @@ export async function signStellarTransaction(
       console.log("Using current Freighter network:", currentNetwork.network);
     }
 
-    console.log("Opening Freighter wallet for signature...");
+    console.log("=== Opening Freighter popup for signature ===");
+    console.log("Sign options:", JSON.stringify(signOptions));
+    
     // Sign the transaction - this will trigger the wallet popup
     const result = await signTransaction(xdr, signOptions);
-    console.log("Freighter returned signature result");
+    
+    console.log("=== Freighter returned result ===");
+    console.log("Has error:", !!result.error);
+    console.log("Has signed XDR:", !!result.signedTxXdr);
+    console.log("Signer address:", result.signerAddress || "none");
     
     if (result.error) {
+      console.error("Freighter error:", result.error);
+      
       // Handle specific error cases
-      if (result.error.includes("User declined")) {
+      if (result.error.includes("User declined") || result.error.includes("rejected")) {
         throw new FreighterWalletError("User declined to sign the transaction", "USER_DECLINED");
       }
       if (result.error.toLowerCase().includes("locked")) {
-        throw new FreighterWalletError("Wallet is locked. Please unlock it.", "WALLET_LOCKED");
+        throw new FreighterWalletError("Wallet is locked. Please unlock Freighter and try again.", "WALLET_LOCKED");
       }
       if (result.error.includes("network")) {
         throw new FreighterWalletError(
-          "Network mismatch. Please switch Freighter to the correct network.",
+          "Network mismatch. Please switch Freighter to TESTNET.",
           "NETWORK_MISMATCH"
+        );
+      }
+      if (result.error.toLowerCase().includes("popup") || result.error.toLowerCase().includes("blocked")) {
+        throw new FreighterWalletError(
+          "Popup blocked. Please allow popups for this site and try again.",
+          "POPUP_BLOCKED"
         );
       }
       throw new FreighterWalletError(result.error, "SIGNING_FAILED");
     }
     
     if (!result.signedTxXdr) {
-      throw new FreighterWalletError("No signed XDR returned", "NO_SIGNED_XDR");
+      throw new FreighterWalletError("No signed XDR returned from Freighter", "NO_SIGNED_XDR");
     }
+    
+    console.log("=== Transaction signed successfully ===");
+    console.log("Signed XDR length:", result.signedTxXdr.length);
     
     return {
       signedXdr: result.signedTxXdr,
       signerAddress: result.signerAddress,
     };
   } catch (error) {
+    console.error("=== Freighter signing error ===", error);
+    
     if (error instanceof FreighterWalletError) {
       throw error;
     }
+    
+    // Handle unexpected errors
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     throw new FreighterWalletError(
-      "Failed to sign transaction. Please make sure Freighter is unlocked and try again.",
+      `Failed to sign transaction: ${errorMessage}. Make sure Freighter is installed, unlocked, and set to TESTNET.`,
       "SIGNING_ERROR"
     );
   }
