@@ -43,6 +43,10 @@ async function executeStellarSwap(params: SwapParams): Promise<SwapResult> {
     const server = new StellarSdk.Horizon.Server("https://horizon-testnet.stellar.org");
     const networkPassphrase = StellarSdk.Networks.TESTNET;
 
+    // Test bridge address for testnet (a well-known testnet address)
+    // In production, this would be the actual bridge smart contract address
+    const BRIDGE_ADDRESS = "GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR";
+
     // Load source account
     let sourceAccount;
     try {
@@ -54,20 +58,25 @@ async function executeStellarSwap(params: SwapParams): Promise<SwapResult> {
       throw error;
     }
 
-    // Create a simple payment transaction as a placeholder
-    // In production, this would interact with a bridge contract
+    console.log("Building Stellar bridge transaction...");
+    console.log("Source:", walletAddress);
+    console.log("Bridge destination:", BRIDGE_ADDRESS);
+    console.log("Amount:", amount, "XLM");
+
+    // Create a payment transaction to the bridge address
+    // In production, this would interact with a bridge smart contract
     const transaction = new StellarSdk.TransactionBuilder(sourceAccount, {
       fee: StellarSdk.BASE_FEE,
       networkPassphrase,
     })
       .addOperation(
         StellarSdk.Operation.payment({
-          destination: walletAddress, // In production, this would be the bridge address
+          destination: BRIDGE_ADDRESS, // Bridge address
           asset: StellarSdk.Asset.native(),
           amount: amount.toString(),
         })
       )
-      .addMemo(StellarSdk.Memo.text(`Bridge: ${fromNetwork} to ${toNetwork}`))
+      .addMemo(StellarSdk.Memo.text(`Bridge:${fromNetwork}->${toNetwork}`))
       .setTimeout(180)
       .build();
 
