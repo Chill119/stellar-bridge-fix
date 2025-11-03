@@ -27,12 +27,13 @@ export async function executeSwap(params: SwapParams): Promise<SwapResult> {
     throw new Error("Source and destination networks must be different");
   }
 
-  // For Stellar network interactions
-  if (toNetwork === "stellar" || fromNetwork === "stellar") {
+  // Only execute Stellar transactions when FROM Stellar network
+  // When FROM other networks TO Stellar, the bridge contract on source network handles it
+  if (fromNetwork === "stellar") {
     return await executeStellarSwap(params);
   }
 
-  // For other networks (Ethereum, Polygon, Solana)
+  // For swaps FROM Ethereum/Polygon/Solana (including TO Stellar)
   return await executeGenericSwap(params);
 }
 
@@ -195,16 +196,28 @@ async function executeStellarSwap(params: SwapParams): Promise<SwapResult> {
 async function executeGenericSwap(params: SwapParams): Promise<SwapResult> {
   const { fromNetwork, toNetwork, token, amount } = params;
 
-  // Simulate swap process for non-Stellar networks
-  // In production, this would interact with Ethereum/Polygon/Solana bridge contracts
+  console.log("=== Executing Generic Swap (Non-Stellar Source) ===");
+  console.log("From:", fromNetwork);
+  console.log("To:", toNetwork);
+  console.log("Token:", token);
+  console.log("Amount:", amount);
+
+  // Simulate swap process for swaps FROM Ethereum/Polygon/Solana
+  // In production, this would interact with bridge contracts on the source chain
+  // which lock tokens there and mint equivalent on Stellar
   return new Promise((resolve, reject) => {
     setTimeout(() => {
-      // Simulate 80% success rate
-      if (Math.random() > 0.2) {
+      // Simulate 90% success rate for demo
+      if (Math.random() > 0.1) {
+        const txHash = `0x${Array.from({ length: 64 }, () => 
+          Math.floor(Math.random() * 16).toString(16)
+        ).join("")}`;
+        
+        console.log("✓ Generic swap simulated successfully");
+        console.log("Transaction hash:", txHash);
+        
         resolve({
-          transactionHash: `0x${Array.from({ length: 64 }, () => 
-            Math.floor(Math.random() * 16).toString(16)
-          ).join("")}`,
+          transactionHash: txHash,
           status: "success",
           fromNetwork,
           toNetwork,
@@ -212,7 +225,8 @@ async function executeGenericSwap(params: SwapParams): Promise<SwapResult> {
           token,
         });
       } else {
-        reject(new Error("Simulated network error"));
+        console.error("✗ Generic swap simulation failed");
+        reject(new Error(`Failed to bridge from ${fromNetwork} - bridge contract error`));
       }
     }, 2000);
   });
