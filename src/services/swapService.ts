@@ -27,9 +27,16 @@ export async function executeSwap(params: SwapParams): Promise<SwapResult> {
     throw new Error("Source and destination networks must be different");
   }
 
-  // For Stellar network interactions
-  if (toNetwork === "stellar" || fromNetwork === "stellar") {
+  // Only execute Stellar transactions when the source network is Stellar
+  // For bridging FROM other networks TO Stellar, those bridge contracts need separate implementation
+  if (fromNetwork === "stellar") {
     return await executeStellarSwap(params);
+  }
+
+  // For other networks (Ethereum, Polygon, Solana) bridging to Stellar
+  // These would interact with bridge contracts on the source network
+  if (toNetwork === "stellar") {
+    throw new Error(`Bridge from ${fromNetwork} to Stellar is not yet implemented. Bridge contracts on ${fromNetwork} network need to be deployed and integrated.`);
   }
 
   // For other networks (Ethereum, Polygon, Solana)
