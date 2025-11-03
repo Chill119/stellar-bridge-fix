@@ -66,32 +66,14 @@ export function BridgeManagement() {
   const balance = getCurrentBalance();
 
   const handleExecuteSwap = async () => {
-    // Check source wallet is connected
-    const sourceConnected = 
-      (fromNetwork === "ethereum" && ethereumWallet.isConnected) ||
-      (fromNetwork === "polygon" && false) || // Polygon not implemented yet
-      (fromNetwork === "solana" && false) || // Solana not implemented yet
-      (fromNetwork === "stellar" && stellarWallet.isConnected);
+    const bothConnected = 
+      (fromNetwork === "ethereum" && ethereumWallet.isConnected) &&
+      (toNetwork === "stellar" && stellarWallet.isConnected);
     
-    // Check destination wallet is connected (needed to receive tokens)
-    const destConnected = 
-      (toNetwork === "stellar" && stellarWallet.isConnected) ||
-      (toNetwork === "ethereum" && ethereumWallet.isConnected) ||
-      (toNetwork === "solana" && false); // Solana not implemented yet
-    
-    if (!sourceConnected) {
+    if (!bothConnected) {
       toast({
-        title: "Source wallet not connected",
-        description: `Please connect your ${fromNetwork} wallet`,
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (!destConnected) {
-      toast({
-        title: "Destination wallet not connected",
-        description: `Please connect your ${toNetwork} wallet to receive tokens`,
+        title: "Wallets not connected",
+        description: "Please connect both source and destination wallets",
         variant: "destructive",
       });
       return;
@@ -116,23 +98,11 @@ export function BridgeManagement() {
     }
 
     setIsSwapping(true);
-    
-    // Only show signing modal for Stellar transactions (when FROM Stellar)
-    if (fromNetwork === "stellar") {
-      setShowSigningModal(true);
-    }
+    setShowSigningModal(true);
 
     try {
-      // Use appropriate wallet address based on source network
-      const walletAddress = fromNetwork === "stellar" 
-        ? stellarWallet.address || ""
-        : ethereumWallet.address || "";
-
-      console.log("=== Initiating Swap ===");
-      console.log("Source network:", fromNetwork);
-      console.log("Destination network:", toNetwork);
-      console.log("Source wallet:", walletAddress);
-      console.log("Amount:", amount, token);
+      // Always use Stellar address when dealing with Stellar swaps
+      const walletAddress = stellarWallet.address || ethereumWallet.address || "";
 
       const result = await executeSwap({
         fromNetwork,
@@ -145,19 +115,14 @@ export function BridgeManagement() {
 
       toast({
         title: "Swap successful!",
-        description: fromNetwork === "stellar" 
-          ? `Bridged ${amount} ${token} from ${fromNetwork} to ${toNetwork}`
-          : `Bridge initiated: ${amount} ${token} from ${fromNetwork} to ${toNetwork}. Tokens will arrive on Stellar after confirmation.`,
+        description: `Swapped ${amount} ${token.toUpperCase()} from ${fromNetwork} to ${toNetwork}`,
       });
 
       // Reset form and refresh balances
       setAmount("");
       
-      // Refresh appropriate wallet balance after successful swap
-      if (fromNetwork === "stellar") {
-        await refreshStellar();
-      }
-      // Note: For Ethereum/other chains, balance will update via wallet events
+      // Refresh Stellar balance after successful swap
+      await refreshStellar();
     } catch (error) {
       toast({
         title: "Swap failed",
@@ -367,17 +332,17 @@ export function BridgeManagement() {
               onClick={handleExecuteSwap}
               className="w-full"
               size="lg"
-              disabled={isSwapping || !amount || parseFloat(amount) <= 0}
+              disabled={!ethereumWallet.isConnected || !stellarWallet.isConnected || isSwapping || !amount || parseFloat(amount) <= 0}
             >
               {isSwapping ? (
                 <>
                   <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  {fromNetwork === "stellar" ? "Signing & Submitting..." : "Processing Bridge..."}
+                  Processing Swap...
                 </>
               ) : (
                 <>
                   <ArrowUpDown className="mr-2 h-4 w-4" />
-                  Bridge from {fromNetwork.charAt(0).toUpperCase() + fromNetwork.slice(1)} to {toNetwork.charAt(0).toUpperCase() + toNetwork.slice(1)}
+                  Execute Swap
                 </>
               )}
             </Button>
