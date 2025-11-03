@@ -1,4 +1,5 @@
 import * as StellarSdk from "stellar-sdk";
+import { getTokenByCode } from "@/types/stellarTokens";
 
 interface SwapParams {
   fromNetwork: string;
@@ -43,6 +44,12 @@ async function executeStellarSwap(params: SwapParams): Promise<SwapResult> {
     const server = new StellarSdk.Horizon.Server("https://horizon-testnet.stellar.org");
     const networkPassphrase = StellarSdk.Networks.TESTNET;
 
+    // Get Stellar token details
+    const stellarToken = getTokenByCode(token);
+    if (!stellarToken) {
+      throw new Error(`Unsupported Stellar token: ${token}`);
+    }
+
     // Test bridge address for testnet (a well-known testnet address)
     // In production, this would be the actual bridge smart contract address
     const BRIDGE_ADDRESS = "GAIH3ULLFQ4DGSECF2AR555KZ4KNDGEKN4AFI4SU2M7B43MGK3QJZNSR";
@@ -59,26 +66,47 @@ async function executeStellarSwap(params: SwapParams): Promise<SwapResult> {
     }
 
     console.log("Building Stellar bridge transaction...");
-    console.log("Source:", walletAddress);
+    console.log("Source network:", fromNetwork);
+    console.log("Target network:", toNetwork);
+    console.log("Source wallet:", walletAddress);
     console.log("Bridge destination:", BRIDGE_ADDRESS);
-    console.log("Amount:", amount, "XLM");
+    console.log("Amount:", amount);
+    console.log("Target token:", token);
+    console.log("Token details:", stellarToken);
+
+    // Determine the asset to send/receive
+    let asset: StellarSdk.Asset;
+    if (stellarToken.isNative) {
+      asset = StellarSdk.Asset.native();
+    } else if (stellarToken.issuer) {
+      asset = new StellarSdk.Asset(stellarToken.code, stellarToken.issuer);
+    } else {
+      // For tokens without issuer, use native for now
+      asset = StellarSdk.Asset.native();
+    }
 
     // Create a payment transaction to the bridge address
     // In production, this would interact with a bridge smart contract
-    const transaction = new StellarSdk.TransactionBuilder(sourceAccount, {
+    const transactionBuilder = new StellarSdk.TransactionBuilder(sourceAccount, {
       fee: StellarSdk.BASE_FEE,
       networkPassphrase,
     })
       .addOperation(
         StellarSdk.Operation.payment({
-          destination: BRIDGE_ADDRESS, // Bridge address
-          asset: StellarSdk.Asset.native(),
+          destination: BRIDGE_ADDRESS,
+          asset: asset,
           amount: amount.toString(),
         })
       )
-      .addMemo(StellarSdk.Memo.text(`Bridge:${fromNetwork}->${toNetwork}`))
-      .setTimeout(180)
-      .build();
+      .addMemo(StellarSdk.Memo.text(`Bridge:${fromNetwork}->${toNetwork}:${token}`))
+      .setTimeout(180);
+
+    // If Soroban contract is specified, add it to the memo for bridge processing
+    if (stellarToken.sorobanContract) {
+      console.log("Soroban contract:", stellarToken.sorobanContract);
+    }
+
+    const transaction = transactionBuilder.build();
 
     // Get XDR for signing
     const xdr = transaction.toXDR();

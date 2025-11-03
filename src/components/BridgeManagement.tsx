@@ -8,6 +8,7 @@ import { useEthereumWallet } from "@/hooks/useEthereumWallet";
 import { FreighterSigningModal } from "./FreighterSigningModal";
 import { useToast } from "@/hooks/use-toast";
 import { executeSwap } from "@/services/swapService";
+import { STELLAR_TOKENS } from "@/types/stellarTokens";
 
 export function BridgeManagement() {
   const { walletState: stellarWallet, connect: connectStellar, signTransaction, refresh: refreshStellar } = useFreighterWallet();
@@ -17,7 +18,7 @@ export function BridgeManagement() {
   const [count, setCount] = useState(1);
   const [fromNetwork, setFromNetwork] = useState<string>("ethereum");
   const [toNetwork, setToNetwork] = useState<string>("stellar");
-  const [token, setToken] = useState("eth");
+  const [token, setToken] = useState("XLM");
   const [amount, setAmount] = useState("");
   const [isSwapping, setIsSwapping] = useState(false);
 
@@ -192,6 +193,12 @@ export function BridgeManagement() {
                       <span>Polygon</span>
                     </div>
                   </SelectItem>
+                  <SelectItem value="solana">
+                    <div className="flex items-center gap-2">
+                      <Globe className="h-4 w-4 text-green-500" />
+                      <span>Solana</span>
+                    </div>
+                  </SelectItem>
                 </SelectContent>
               </Select>
 
@@ -252,17 +259,39 @@ export function BridgeManagement() {
 
             {/* Token Selection */}
             <div>
-              <label className="text-sm text-muted-foreground mb-2 block">Token</label>
+              <label className="text-sm text-muted-foreground mb-2 block">
+                {toNetwork === "stellar" ? "Stellar Token (Destination)" : "Token"}
+              </label>
               <Select value={token} onValueChange={setToken}>
                 <SelectTrigger className="w-full bg-background/80 border-border">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border">
-                  <SelectItem value="eth">ETH (Ethereum)</SelectItem>
-                  <SelectItem value="usdc">USDC</SelectItem>
-                  <SelectItem value="usdt">USDT</SelectItem>
+                  {toNetwork === "stellar" ? (
+                    <>
+                      {STELLAR_TOKENS.map((stellarToken) => (
+                        <SelectItem key={stellarToken.code} value={stellarToken.code}>
+                          <div className="flex items-center gap-2">
+                            <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+                            <span>{stellarToken.code} - {stellarToken.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </>
+                  ) : (
+                    <>
+                      <SelectItem value="eth">ETH (Ethereum)</SelectItem>
+                      <SelectItem value="usdc">USDC</SelectItem>
+                      <SelectItem value="usdt">USDT</SelectItem>
+                    </>
+                  )}
                 </SelectContent>
               </Select>
+              {toNetwork === "stellar" && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Bridging to Stellar {token} token via Soroban smart contract
+                </p>
+              )}
             </div>
 
             {/* Amount Input */}
